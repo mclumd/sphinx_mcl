@@ -28,10 +28,14 @@ def pos_str(pos):
 
 def cmd_callback(data):
 	rospy.loginfo("got " + data.data)
+        global voice
+        global soundhandle
 	cmd = str(data.data).strip()
 	if cmd == "hello baxter":
 		rospy.loginfo("hello commander")
-		os.system("espeak -v en 'hello commander'") #speaker?
+		s="Hello Human"
+                soundhandle.say(s,voice)
+                #os.system("espeak -v en 'hello commander'") #speaker?
 	elif cmd == "point to the quad":
 		'''
 		if the quadrotor's positon is being published, its last known
@@ -42,11 +46,15 @@ def cmd_callback(data):
 			t = rospy.get_rostime()
 			rospy.loginfo(str(t) + "," + str(lastPosTime))
 			if lastPosTime != 0 and t - lastPosTime < currentPositionMaxDuration:
-				pub.publish(quadPos)
+				s="Pointing to the Quad"
+                                soundhandle.say(s,voice)
+                                pub.publish(quadPos)
 				rospy.loginfo("sending command to point to " + 
 				pos_str(quadPos))
 			else:
 				# Say I don't know where the Quad is, should I try and find it?
+                                s="I do not see the quad"
+                                soundhandle.say(s,voice)
                                 rospy.loginfo("Last quad position is outdated: recorded at " + 
 				pos_str(quadPos) + str(round((t - lastPosTime).to_sec(), 2))
 				+ " seconds ago")
@@ -82,6 +90,9 @@ def quad_pos_callback(data):
 	
 def start_node():
 	rospy.init_node('command_node')
+        global soundhandle
+        soundhandle = SoundClient()
+        rospy.sleep(1)
 	#subscribe to channels reporting commands and the quadrotor's position
 	rospy.Subscriber("cmds_received", String, cmd_callback)
 	rospy.Subscriber("/quad_position", PointStamped, quad_pos_callback)
