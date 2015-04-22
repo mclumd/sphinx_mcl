@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 import rospy
 import os
 from std_msgs.msg import String
@@ -18,7 +19,7 @@ pub = None
 quadPos = None
 lastPosTime = None
 soundhandle = None
-voice = 'voice_kal_diphone
+voice = 'voice_kal_diphone'
 
 def pos_str(pos):
 	if not pos:
@@ -83,8 +84,8 @@ def quad_pos_callback(data):
 		quadPos = None
 		lastPosTime = t
 	else:		
-		rospy.loginfo("setting last known quad position to " + 
-		pos_str(p) + ". t =" + str(round(t.to_sec(), 2)))
+		#rospy.loginfo("setting last known quad position to " + 
+		#pos_str(p) + ". t =" + str(round(t.to_sec(), 2)))
 		quadPos = p
 		lastPosTime = t
 	
@@ -95,7 +96,7 @@ def start_node():
         rospy.sleep(1)
 	#subscribe to channels reporting commands and the quadrotor's position
 	rospy.Subscriber("cmds_received", String, cmd_callback)
-	rospy.Subscriber("/quad_position", PointStamped, quad_pos_callback)
+	rospy.Subscriber("quad_pos", PointStamped, quad_pos_callback)
 	#start a publisher to the channel where pointing cmds are sent
 	global pub
 	pub = rospy.Publisher('/point_cmd', Point, queue_size=10)
