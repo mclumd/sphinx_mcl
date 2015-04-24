@@ -60,7 +60,7 @@ def cmd_callback(data):
                                 msg.arg = 'I see the quad and am pointing to the quad'
                                 msg.arg2 = 'voice_kal_diphone'
                                 pub_audio.publish(msg)
-                                pub.publish(quadPos)
+                                pub_cmd.publish(quadPos)
 				rospy.loginfo("sending command to point to " + 
 				pos_str(quadPos))
 			else:
@@ -198,7 +198,10 @@ def start_node():
 	rospy.Subscriber("cmds_received", String, cmd_callback)
 	rospy.Subscriber("quad_pos", PointStamped, quad_pos_callback)
 	#start a publisher to the channel where pointing cmds are sent
-	global pub
+	global pub_audio
+	global pub_cmd
+	global pub_tuck
+	global pub_arm
 	pub_cmd = rospy.Publisher('/point_cmd', Point, queue_size=10)
 	pub_arm = rospy.Publisher('/arm_cmd', String, queue_size=10)
         pub_tuck = rospy.Publisher('/tuck_cmd', String, queue_size=10)
