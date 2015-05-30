@@ -2,6 +2,7 @@
 import rospy
 import os
 from std_msgs.msg import String
+from ar_track_alvar_msgs.msg import AlvarMarker, AlvarMarkers
 from geometry_msgs.msg import Point
 from geometry_msgs.msg import PointStamped
 from std_msgs.msg import String
@@ -14,6 +15,7 @@ CURRENT_POSITION_MAX_LAG = 2.0
 
 #convert max delay time to ROS Duration
 currentPositionMaxDuration = rospy.Duration.from_sec(CURRENT_POSITION_MAX_LAG)
+juliaPositionMaxDuration = rospy.Duration.from_sec(10.0)
 
 pub_cmd = None
 pub_arm = None
@@ -22,7 +24,12 @@ pub_audio = None
 quadPos = None
 lastPosTime = None
 soundhandle = None
+julia_cnd = None
+juliaPos = None
+lastJuliaTime = None
 voice = 'voice_kal_diphone'
+havejulia = False
+
 
 def pos_str(pos):
 	if not pos:
@@ -31,9 +38,8 @@ def pos_str(pos):
 		return "(" + str(pos.x) + ", " + str(pos.y) + ", " + str(pos.z) + ")"
 
 def cmd_callback(data):
-	rospy.loginfo("got " + data.data)
-        #global voice
-        #global soundhandle
+	global juliaPos
+        rospy.loginfo("got " + data.data)
 	cmd = str(data.data).strip()
 	if cmd == "hello baxter":
 		rospy.loginfo("hello commander")
@@ -61,19 +67,25 @@ def cmd_callback(data):
                                 msg.arg2 = 'voice_kal_diphone'
                                 pub_audio.publish(msg)
                                 pub_cmd.publish(quadPos)
-				rospy.loginfo("sending command to point to " + 
+				rospy.loginfo("Speech command: I see the quad and am pointing - sending command to point to " + 
 				pos_str(quadPos))
 			else:
 				msg = SoundRequest()
                                 msg.sound = -3
                                 msg.command = 1
-                                msg.arg = 'I do not see the quad'
+                                msg.arg = 'I no longer can see the quad'
                                 msg.arg2 = 'voice_kal_diphone'
                                 pub_audio.publish(msg)
-                                rospy.loginfo("Last quad position is outdated: recorded at " + 
+                                rospy.loginfo("Speech command: I no longer can see the quad - last quad position is outdated: recorded at " + 
 				pos_str(quadPos) + str(round((t - lastPosTime).to_sec(), 2))
 				+ " seconds ago")
 		else:
+			msg = SoundRequest()
+			msg.sound = -3
+			msg.command = 1
+			msg.arg = 'I do not see the quad'
+			msg.arg2 = 'voice_kal_diphone'
+			pub_audio.publish(msg)
 			rospy.loginfo("No known quad location")
 	elif cmd == "turn on the quad":
                 msg = SoundRequest()
@@ -82,40 +94,40 @@ def cmd_callback(data):
                 msg.arg = 'I do not know how to do that'
                 msg.arg2 = 'voice_kal_diphone'
                 pub_audio.publish(msg)
-		rospy.loginfo("I do not know how to start quad")
+		rospy.loginfo("Speech command: I do not know how to start quad")
 	elif cmd == "move your right arm to the side":
                 msg = SoundRequest()
                 msg.sound = -3
                 msg.command = 1
-                msg.arg = 'moving right arm to the side'
+                msg.arg = 'moving my right arm to the side'
                 msg.arg2 = 'voice_kal_diphone'
                 pub_audio.publish(msg)
                 amsg = String()
                 amsg.data = "right_arm_side"
                 pub_arm.publish(amsg)
-		rospy.loginfo("move your right arm to the side")
+		rospy.loginfo("Speech command: moving your right arm to the side")
 	elif cmd == "move your left arm to the side":
                 msg = SoundRequest()
                 msg.sound = -3
                 msg.command = 1
-                msg.arg = 'moving right arm to the side'
+                msg.arg = 'moving my left arm to the side'
                 msg.arg2 = 'voice_kal_diphone'
                 pub_audio.publish(msg)
                 amsg = String()
                 amsg.data = "left_arm_side"
                 pub_arm.publish(amsg)
-		rospy.loginfo("move your left arm to the side")
+		rospy.loginfo("Speech command: moving my left arm to the side")
 	elif cmd == "move both of your arms to the side":
                 msg = SoundRequest()
                 msg.sound = -3
                 msg.command = 1
-                msg.arg = 'moving right arm to the side'
+                msg.arg = 'moving my arms to the side'
                 msg.arg2 = 'voice_kal_diphone'
                 pub_audio.publish(msg)
                 amsg = String()
                 amsg.data = "both_arms_side"
                 pub_arm.publish(amsg)
-		rospy.loginfo("move your left arm to the side")
+		rospy.loginfo("Speech command: moving both of my arms to the side")
 	elif cmd == "tuck your arms":
                 msg = SoundRequest()
                 msg.sound = -3
@@ -126,7 +138,7 @@ def cmd_callback(data):
                 amsg = String()
                 amsg.data = "True"
                 pub_tuck.publish(amsg)
-		rospy.loginfo("tucking arms")
+		rospy.loginfo("Speech command: tucking arms")
 	elif cmd == "untuck your arms":
                 msg = SoundRequest()
                 msg.sound = -3
@@ -137,13 +149,14 @@ def cmd_callback(data):
                 amsg = String()
                 amsg.data = "False"
                 pub_tuck.publish(amsg)
-		rospy.loginfo("untucking arms")
+		rospy.loginfo("Speech command:untucking arms")
 	elif cmd == "raise the quad":
 		msg = SoundRequest()
                 msg.sound = -3
                 msg.command = 1
                 msg.arg = 'I do not know how to do that'
                 msg.arg2 = 'voice_kal_diphone'
+                pub_audio.publish(msg)
                 rospy.loginfo("I do not know how to raise quad")
 	elif cmd == "lower the quad":
                 msg = SoundRequest()
@@ -151,21 +164,59 @@ def cmd_callback(data):
                 msg.command = 1
                 msg.arg = 'I do not know how to do that'
                 msg.arg2 = 'voice_kal_diphone'		
-                rospy.loginfo("I do not know how to lower quad")
+                pub_audio.publish(msg)
+                rospy.loginfo("Speech command: I do not know how to lower quad")
 	elif cmd == "land the quad":
                 msg = SoundRequest()
                 msg.sound = -3
                 msg.command = 1
                 msg.arg = 'I do not know how to do that'
-                msg.arg2 = 'voice_kal_diphone'		
-                rospy.loginfo("I do not know how to land quad")
+                msg.arg2 = 'voice_kal_diphone'	
+                pub_audio.publish(msg)	
+                rospy.loginfo("Speech command: I do not know how to land quad")
 	elif cmd == "turn off the quad":
 		msg = SoundRequest()
                 msg.sound = -3
                 msg.command = 1
                 msg.arg = 'I do not know how to do that'
                 msg.arg2 = 'voice_kal_diphone'
-                rospy.loginfo("I do not know how to turn off quad")
+                pub_audio.publish(msg)
+                rospy.loginfo("Speech command: I do not know how to turn off quad")
+	elif cmd == "how are you":
+		msg = SoundRequest()
+                msg.sound = -3
+                msg.command = 1
+                msg.arg = 'I am fine'
+                msg.arg2 = 'voice_kal_diphone'
+                pub_audio.publish(msg)
+                rospy.loginfo("Speech command: I am fine")
+	elif cmd == "how are you doing":
+		msg = SoundRequest()
+                msg.sound = -3
+                msg.command = 1
+                msg.arg = 'I am fine'
+                msg.arg2 = 'voice_kal_diphone'
+                pub_audio.publish(msg)
+                rospy.loginfo("Speech command: I am fine")
+	elif "julia" in cmd:
+		t = rospy.get_rostime()
+                if havejulia and lastJuliaTime != 0 and t - lastJuliaTime < juliaPositionMaxDuration:
+                    msg = SoundRequest()
+                    msg.sound = -3
+                    msg.command = 1
+                    msg.arg = 'Julia is over there'
+                    msg.arg2 = 'voice_kal_diphone'
+                    pub_cmd.publish(juliaPos)
+                    pub_audio.publish(msg)
+                    rospy.loginfo("Speech command: Julia is over there, pointing to her")
+                else:
+                    msg = SoundRequest()
+                    msg.sound = -3
+                    msg.command = 1
+                    msg.arg = 'I am having trouble with my vision and am not sure that I see Julia'
+                    msg.arg2 = 'voice_kal_diphone'
+                    pub_audio.publish(msg)
+                    rospy.loginfo("Speech command: Not sure I see Julia")
 	else:
 		msg = SoundRequest()
                 msg.sound = -3
@@ -173,6 +224,7 @@ def cmd_callback(data):
                 msg.arg = 'I did not understand that command'
                 msg.arg2 = 'voice_kal_diphone'
                 rospy.loginfo("command " + cmd + " not understood")
+	
 
 def quad_pos_callback(data):
 	t = rospy.get_rostime()
@@ -188,7 +240,20 @@ def quad_pos_callback(data):
 		#pos_str(p) + ". t =" + str(round(t.to_sec(), 2)))
 		quadPos = p
 		lastPosTime = t
-	
+
+def julia_callback(data):
+	global juliaPos
+        global havejulia
+        global lastJuliaTime
+        for marker in data.markers:
+	    if marker.id==10 or marker.id==12:
+                juliaPos = Point() 
+                juliaPos.x = marker.pose.pose.position.x
+                juliaPos.y = marker.pose.pose.position.y
+                juliaPos.z = marker.pose.pose.position.z
+                havejulia = True
+                lastJuliaTime = rospy.get_rostime()
+                break
 def start_node():
 	rospy.init_node('command_node')
         global soundhandle
@@ -197,6 +262,7 @@ def start_node():
 	#subscribe to channels reporting commands and the quadrotor's position
 	rospy.Subscriber("cmds_received", String, cmd_callback)
 	rospy.Subscriber("quad_pos", PointStamped, quad_pos_callback)
+        rospy.Subscriber("ar_pose_marker", AlvarMarkers, julia_callback)
 	#start a publisher to the channel where pointing cmds are sent
 	global pub_audio
 	global pub_cmd
