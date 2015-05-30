@@ -208,6 +208,9 @@ def cmd_callback(data):
                     msg.arg2 = 'voice_kal_diphone'
                     pub_cmd.publish(juliaPos)
                     pub_audio.publish(msg)
+                    rospy.sleep(2)
+                    msg.arg = 'I am pointing at her'
+                    pub_audio.publish(msg)
                     rospy.loginfo("Speech command: Julia is over there, pointing to her")
                 else:
                     msg = SoundRequest()
