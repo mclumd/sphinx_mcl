@@ -1,0 +1,2 @@
+4/8/2016:  Changing sphinx_mcl.cpp to listen on asoa_status and keep track
+	of whether we're currently speaking.  Only publish when we're not.

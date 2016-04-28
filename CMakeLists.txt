@@ -7,7 +7,7 @@ find_package(catkin REQUIRED COMPONENTS
 )
 pkg_check_modules(SPHINX REQUIRED sphinxbase)
 pkg_check_modules(POCKETSPHINX REQUIRED pocketsphinx)
-
+message("" ${POCKETSPHINX_INCLUDE_DIRS})
 catkin_package()
 
 include_directories(
@@ -19,17 +19,25 @@ include_directories(
 message(status "keyphrase=${sphinx_mcl_SOURCE_DIR}")
 set(mdir,${POCKETSPHINX_PREFIX}/share/pocketsphinx/model)
 message(status "Modeldir=${POCKETSPHINX_PREFIX}/share/pocketsphinx/model")
+message("" ${POCKETSPHINX_PREFIX})
 add_definitions(-DMODELDIR="${POCKETSPHINX_PREFIX}/share/pocketsphinx/model")
 add_definitions(-DKEYDIR="${sphinx_mcl_SOURCE_DIR}/data")
 ## Declare a cpp executable
  add_executable(${PROJECT_NAME}_node src/sphinx_mcl.cpp)
+ add_executable(${PROJECT_NAME}_nosoa_node src/sphinx_mcl_nosoa.cpp)
 
 ## Add cmake target dependencies of the executable/library
 ## as an example, message headers may need to be generated before nodes
 # add_dependencies(sphinx_md_node sphinx_md_generate_messages_cpp)
 
 ## Specify libraries to link a library or executable target against
- target_link_libraries(${PROJECT_NAME}_node
+ target_link_libraries(${PROJECT_NAME}_node 
+   ${catkin_LIBRARIES}
+   ${SPHINX_LIBRARIES}
+   ${POCKETSPHINX_LIBRARIES}
+ )
+
+ target_link_libraries(${PROJECT_NAME}_nosoa_node 
    ${catkin_LIBRARIES}
    ${SPHINX_LIBRARIES}
    ${POCKETSPHINX_LIBRARIES}
